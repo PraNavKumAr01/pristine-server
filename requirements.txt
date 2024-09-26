@@ -1,0 +1,9 @@
+langchain
+langchain_community
+python-docx
+pypdf2
+pandas
+fastapi
+uvicorn
+pydantic
+tqdm
