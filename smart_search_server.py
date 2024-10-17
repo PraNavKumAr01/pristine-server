@@ -11,8 +11,8 @@ from typing import List
 
 app = FastAPI()
 
-db_path = "/Users/yashtyagi/Documents/Projects/smart-sort/image-src/db_new"
-parent_path = "/Users/yashtyagi/Documents/Projects/smart-sort/content/new_content"
+db_path = "/Users/pranav/Documents/Projects/smart-sort/image-src/db_new"
+parent_path = "/Users/pranav/Documents/Projects/smart-sort/content/new_content"
 
 embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')
 store = Chroma(embedding_function=embeddings, collection_name='content_embeddings', persist_directory=db_path)
@@ -29,9 +29,7 @@ class SearchResult(BaseModel):
 
 @app.post("/add_to_vector_db")
 def add_files_to_collection(folder: FolderPath):
-    print(f"folder path: {folder}")
     folder_path = folder.path
-    print(f"Received folder path: {folder_path}")  
     if not os.path.exists(folder_path):
         raise HTTPException(status_code=404, detail="Folder not found")
 
@@ -40,8 +38,6 @@ def add_files_to_collection(folder: FolderPath):
 
     for file_path in tqdm(files, desc="Creating Embeddings and Adding to DB"):
         try:
-            if file_path == ".DS_Store":
-                continue
             file_ext = get_file_extension(file_path)
             content = extract_content(file_path)
             if file_ext in image_exts:
@@ -100,4 +96,4 @@ async def search(query_model: QueryModel):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

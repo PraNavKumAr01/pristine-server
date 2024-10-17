@@ -3,8 +3,8 @@ from langchain.prompts import PromptTemplate
 import re
 import json
 
-llm_text = Ollama(model="qwen2.5:1.5b-instruct")
-llm_image = Ollama(model = "moondream:v2")
+llm_text = Ollama(model="llama3")
+llm_image = Ollama(model = "llava")
 
 main_prompt = PromptTemplate(
     input_variables=["content"],

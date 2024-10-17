@@ -12,7 +12,7 @@ class OrganizeRequest(BaseModel):
     folder_path: str
     rename: bool = False
     categorize: bool = False
-    cat_strength: int = 5
+    cat_strength: int = 3
     preferences: str = ""
 
 class FileInfo(BaseModel):
