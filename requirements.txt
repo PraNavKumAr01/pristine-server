@@ -7,3 +7,5 @@ fastapi
 uvicorn
 pydantic
 tqdm
+sentence-transformers[onnx]
+optimum[exporters,onnxruntime]==1.19.0
