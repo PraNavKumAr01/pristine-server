@@ -13,15 +13,7 @@ from typing import List, Optional, Any
 app = FastAPI()
 
 db_path = "/Users/pranav/Documents/Projects/smart-sort/image-src/db_new"
-
-model = SentenceTransformer(
-   "/Users/pranav/Documents/Projects/pristine-server/embedding_model",
-   backend="onnx",
-   model_kwargs={
-      "file_name": "model_qint8_avx512_vnni.onnx",
-      "provider" : "CPUExecutionProvider"
-  },
-)
+parent_path = "/Users/pranav/Documents/Projects/smart-sort/content/new_content"
 
 embeddings = HuggingFaceEmbeddings(client = model)
 store = Chroma(embedding_function=embeddings, collection_name='content_embeddings', persist_directory=db_path)
@@ -35,52 +27,30 @@ class QueryModel(BaseModel):
 class SearchResult(BaseModel):
     file_paths: List[str]
 
-class DeleteResult(BaseModel):
-    deleted_paths: List[str]
-    failed_paths: List[str]
-
-def get_all_file_paths(path: str) -> List[str]:
-    if os.path.isfile(path):
-        return [os.path.abspath(path)]
-    elif os.path.isdir(path):
-        file_paths = []
-        for root, _, files in os.walk(path):
-            for file in files:
-                file_paths.append(os.path.abspath(os.path.join(root, file)))
-        return file_paths
-    else:
-        return []
-
-def process_file(file_path: str) -> bool:
-    try:
-        file_ext = get_file_extension(file_path)
-        content = extract_content(file_path)
-        if file_ext in image_exts:
-            content = summarize_image(content)
-        else:
-            if len(content) >= 1000:
-                content = summarize_text(content)
-        store.add_texts(
-            texts=[content],
-            ids=[file_path]
-        )
-        return True
-    except Exception as e:
-        print(f"Error processing {file_path}: {e}")
-        return False
-
 @app.post("/add_to_vector_db")
-def add_to_collection(paths_model: PathsModel):
-    paths = paths_model.paths
+def add_files_to_collection(folder: FolderPath):
+    folder_path = folder.path
+    if not os.path.exists(folder_path):
+        raise HTTPException(status_code=404, detail="Folder not found")
+
+    files = [os.path.join(folder_path, file_name) for file_name in os.listdir(folder_path)]
     success = True
-    files_to_process = []
 
-    for path in paths:
-        abs_path = os.path.abspath(path)
-        files_to_process.extend(get_all_file_paths(abs_path))
-
-    for file_path in tqdm(files_to_process, desc="Creating Embeddings and Adding to DB"):
-        if not process_file(file_path):
+    for file_path in tqdm(files, desc="Creating Embeddings and Adding to DB"):
+        try:
+            file_ext = get_file_extension(file_path)
+            content = extract_content(file_path)
+            if file_ext in image_exts:
+                content = summarize_image(content)
+            else:
+                if len(content) >= 1000:
+                    content = summarize_text(content)
+            store.add_texts(
+                texts=[content],
+                ids=[file_path]
+            )
+        except Exception as e:
+            print(f"Error processing {file_path}: {e}")
             success = False
 
     return {"success": success, "files_processed": len(files_to_process)}
