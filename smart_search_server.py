@@ -3,10 +3,10 @@ from pydantic import BaseModel
 from tqdm import tqdm
 import os
 from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from sentence_transformers import SentenceTransformer
 from content_extractor import extract_content
-from summarizer import summarize_text, summarize_image
+#from summarizer import summarize_text, summarize_image
 from file_types import get_file_extension, image_exts
 from typing import List, Optional, Any
 
@@ -39,14 +39,20 @@ class DeleteResult(BaseModel):
     deleted_paths: List[str]
     failed_paths: List[str]
 
+def is_system_file(filename: str) -> bool:
+    """Check if a file is a system file or hidden file."""
+    system_files = {'.DS_Store', 'Thumbs.db', '.gitignore', '.git'}
+    return filename.startswith('.') or filename in system_files
+
 def get_all_file_paths(path: str) -> List[str]:
     if os.path.isfile(path):
-        return [os.path.abspath(path)]
+        return [os.path.abspath(path)] if not is_system_file(os.path.basename(path)) else []
     elif os.path.isdir(path):
         file_paths = []
         for root, _, files in os.walk(path):
             for file in files:
-                file_paths.append(os.path.abspath(os.path.join(root, file)))
+                if not is_system_file(file):
+                    file_paths.append(os.path.abspath(os.path.join(root, file)))
         return file_paths
     else:
         return []
@@ -55,11 +61,11 @@ def process_file(file_path: str) -> bool:
     try:
         file_ext = get_file_extension(file_path)
         content = extract_content(file_path)
-        if file_ext in image_exts:
-            content = summarize_image(content)
-        else:
-            if len(content) >= 1000:
-                content = summarize_text(content)
+        # if file_ext in image_exts:
+        #     content = summarize_image(content)
+        # else:
+        #     if len(content) >= 1000:
+        #         content = summarize_text(content)
         store.add_texts(
             texts=[content],
             ids=[file_path]
@@ -80,6 +86,7 @@ def add_to_collection(paths_model: PathsModel):
         files_to_process.extend(get_all_file_paths(abs_path))
 
     for file_path in tqdm(files_to_process, desc="Creating Embeddings and Adding to DB"):
+        print(f"Embeddings {file_path}")
         if not process_file(file_path):
             success = False
 
