@@ -47,7 +47,7 @@ class FileOrganizerClient:
 def main():
     client = FileOrganizerClient()
 
-    test_folder = "/Users/pranav/Documents/Projects/local-ollama/content/main_content"
+    test_folder = "/Users/pranav/Documents/Projects/pristine-server/main_content"
 
     print("Previewing changes...")
     preview = client.preview_changes(

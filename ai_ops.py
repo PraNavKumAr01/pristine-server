@@ -1,71 +1,79 @@
 import json
-from langchain_community.llms.ollama import Ollama
+from langchain_ollama import OllamaLLM
 from langchain.prompts import PromptTemplate
 import re
 
-#llm = Ollama(model="llama3")
-llm = Ollama(model="llava")
+llm = OllamaLLM(model="llama3.2:1b-instruct-q4_K_M")
+#llm = OllamaLLM(model="llava")
 
 rename_prompt = PromptTemplate(
     input_variables=["file_content", "used_names", "mime_type", "additional_info"],
     template="""You are a file naming assistant. Your task is to suggest an appropriate filename based on the content provided, following these strict guidelines:
 
-1. Analyze the following file content and suggest a descriptive filename:
-{file_content}
+    1. Analyze the following file content and suggest a descriptive filename:
+    {file_content}
 
-2. Filename requirements:
-   - Use only lowercase letters (a-z), numbers (0-9), hyphen (-) or underscore (_)
-   - Start the filename with a letter
-   - Do not use spaces slashes (/) or any special characters
-   - Keep the filename concise but descriptive (max 50 characters, excluding extension)
-   - Ensure no two words are stuck together, separate words should have a '-'
-   - Ensure the filename is unique and not in this list: {used_names}
+    2. Filename requirements:
+    - Use only lowercase letters (a-z), numbers (0-9), and hyphens (-)
+    - Start the filename with a letter
+    - Do not use underscores, spaces, slashes (/), or any special characters
+    - Keep the filename concise but descriptive (max 40 characters)
+    - Separate words with hyphens
+    - Ensure the filename is unique and not in this list: {used_names}
+    - Do not include any file extensions (e.g., .txt, .json, etc.)
+    - Do not include any metadata (e.g., date, file type) in the filename
 
-4. Provide a brief description of the file content and explain your reasoning for the chosen filename.
+    3. Provide a brief but specific description of the file content (15-30 words)
 
-Here is some additional information from the user, these instructions are very important:
-{additional_info}
+    4. Format your response as a JSON object:
+        {{
+        "filename": "suggested-filename",
+        "description": "Brief specific description of the file content"
+        }}
 
-5. Format your response as a single word or underscore-separated words:
-    {{
-     "filename": "suggested_filename",
-     "description": "Brief description of the file content",
-    }}
+    5. Additional instructions:
+    {additional_info}
 
-- Provide only the new file name without adding any extensions, Your response should be like health_benefits not health_benefits.txt
+    Before submitting, double-check that your filename adheres to all requirements, especially avoiding file extensions and metadata.
+    Make sure that the words in the file name are not together and are seperated by underscoresand avoid using any extensions in the file name
 
-- Your response JSON should always contain both filename and description fields.
-
-Provide only the JSON object in your response, without any additional text or explanation."""
+    Provide only the JSON object in your response, without any additional text or explanation."""
 )
 
 categorize_prompt = PromptTemplate(
     input_variables=["file_content", "existing_categories", "cat_strength", "additional_info"],
-    template="""You are a file categorization assistant. Your task is to suggest an appropriate category or folder name for organizing a file based on its content, following these strict guidelines:
+    template="""You are a file categorization assistant. Your task is to suggest a single appropriate category or folder name for organizing a file based on its content, following these strict guidelines:
 
-1. Analyze the following file content:
-{file_content}
+    1. Analyze the following file content:
+    {file_content}
 
-2. Categorization strength : {cat_strength}
-This value determines how broadly or specifically the category should be chosen.
-If this value is 1, then try to choose from one of the existing categories untill there is nothing that can broadly fit this content
-If this values is 5, then try to create new categories even if there is an existing category that broadly fits this content
+    2. Categorization strength: {cat_strength}
+    - If 1-2: Strongly prefer existing categories
+    - If 3-4: Balance between existing and new categories
+    - If 5: Prefer creating new, specific categories
 
-3. If this content can be categorised into any of these existing categories and categorization strength is 1, just return back that category name instead of a new one.
-The existing categories are :
-{existing_categories}
+    3. Existing categories:
+    {existing_categories}
 
-4. Format your response as a single word or underscore-separated words
+    4. Category name requirements:
+    - Use only lowercase letters (a-z), numbers (0-9), and hyphens (-)
+    - Start with a letter
+    - Keep it short and concise (max 30 characters)
+    - Separate words with hyphens
+    - Provide only ONE category
+    - The category must be directly related to the main topic of the file content
+    - Avoid overly broad or generic categories
 
-Example good response: mental-health-awareness
-Example bad response: MENTAL#Health or this-looks-like-mental-health    
+    5. Additional instructions:
+    {additional_info}
 
-Here is some additional information from the user, these instructions are very important.
-{additional_info}
+    Before submitting, ensure your category is genuinely relevant to the file content and not an unrelated term.
+    It is very important to have the category name aligned with the content of the file. Use suitable categories that strictly relate to the file content
+    Make sure that the words in the category are not together and are seperated by underscoresand avoid using any extensions in the file name
 
-Provide only the category name in your response, without any additional text or explanation.
-"""
+    Provide only the single category name in your response, without any additional text or explanation."""
 )
+
 
 rename_chain = rename_prompt | llm
 categorize_chain = categorize_prompt | llm

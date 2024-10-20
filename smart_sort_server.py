@@ -44,6 +44,7 @@ class FileOrganizer:
                     content = extract_content(file_path)
                     file_ext = get_file_extension(file_path)
                     new_content = suggest_filename(content, used_names, file_ext, preferences)
+                    print(new_content)
                     new_name = new_content["filename"]
                     new_name += file_ext
                     desc = new_content["description"]
