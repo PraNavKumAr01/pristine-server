@@ -4,9 +4,9 @@ from tqdm import tqdm
 import os
 from langchain_community.vectorstores import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 from content_extractor import extract_content
-#from summarizer import summarize_text, summarize_image
 from file_types import get_file_extension, image_exts
 from typing import List, Optional, Any
 
@@ -26,6 +26,13 @@ model = SentenceTransformer(
 embeddings = HuggingFaceEmbeddings(client = model)
 store = Chroma(embedding_function=embeddings, collection_name='content_embeddings', persist_directory=db_path)
 
+# Initialize the text splitter
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=1000,
+    chunk_overlap=200,
+    length_function=len,
+)
+
 class PathsModel(BaseModel):
     paths: List[str]
 
@@ -38,6 +45,10 @@ class SearchResult(BaseModel):
 class DeleteResult(BaseModel):
     deleted_paths: List[str]
     failed_paths: List[str]
+
+class ClearResult(BaseModel):
+    success: bool
+    message: str
 
 def is_system_file(filename: str) -> bool:
     """Check if a file is a system file or hidden file."""
@@ -61,15 +72,22 @@ def process_file(file_path: str) -> bool:
     try:
         file_ext = get_file_extension(file_path)
         content = extract_content(file_path)
-        # if file_ext in image_exts:
-        #     content = summarize_image(content)
-        # else:
-        #     if len(content) >= 1000:
-        #         content = summarize_text(content)
-        store.add_texts(
-            texts=[content],
-            ids=[file_path]
-        )
+        
+        if len(content) > 1000:
+            chunks = text_splitter.split_text(content)
+            print(len(chunks))
+            for i, chunk in enumerate(chunks):
+                id = f"{file_path}<chunk>{i}"
+                print(id)
+                store.add_texts(
+                    texts=[chunk],
+                    ids=[id]
+                )
+        else:
+            store.add_texts(
+                texts=[content],
+                ids=[file_path]
+            )
         return True
     except Exception as e:
         print(f"Error processing {file_path}: {e}")
@@ -114,9 +132,12 @@ async def search(query_model: QueryModel):
             index = store_info['documents'].index(content)
             corresponding_id = store_info['ids'][index]
 
-            if corresponding_id not in encountered_files:
-                encountered_files.add(corresponding_id)
-                file_ids.append(corresponding_id)
+            # Extract the base file path (remove the chunk identifier if present)
+            base_file_path = corresponding_id.split('<chunk>')[0]
+
+            if base_file_path not in encountered_files:
+                encountered_files.add(base_file_path)
+                file_ids.append(base_file_path)
 
             print(f'The corresponding ID is: {corresponding_id}')
         except ValueError:
@@ -139,13 +160,28 @@ def delete_embeddings(paths_model: PathsModel):
 
     for file_path in tqdm(all_file_paths, desc="Deleting embeddings"):
         try:
-            store.delete(ids=[file_path])
+            # Delete all chunks associated with this file
+            ids_to_delete = [id for id in store.get()['ids'] if id.startswith(file_path)]
+            store.delete(ids=ids_to_delete)
             deleted_paths.append(file_path)
         except Exception as e:
             print(f"Failed to delete embedding for {file_path}: {e}")
             failed_paths.append(file_path)
 
     return DeleteResult(deleted_paths=deleted_paths, failed_paths=failed_paths)
+
+@app.post("/clear_vector_db", response_model=ClearResult)
+def clear_vector_db():
+    try:
+        # Get all IDs in the database
+        all_ids = store.get()['ids']
+        
+        # Delete all documents
+        store.delete(ids=all_ids)
+        
+        return ClearResult(success=True, message="Vector database cleared successfully")
+    except Exception as e:
+        return ClearResult(success=False, message=f"Failed to clear vector database: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

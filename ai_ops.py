@@ -3,7 +3,7 @@ from langchain_ollama import OllamaLLM
 from langchain.prompts import PromptTemplate
 import re
 
-llm = OllamaLLM(model="llama3.2:1b-instruct-q4_K_M")
+llm = OllamaLLM(model="llama3")#.2:1b-instruct-q4_K_M")
 #llm = OllamaLLM(model="llava")
 
 rename_prompt = PromptTemplate(

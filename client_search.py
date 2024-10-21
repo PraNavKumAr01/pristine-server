@@ -22,13 +22,19 @@ def delete_embeddings(paths: List[str]):
     response = requests.post(url, json=payload)
     return response.json()
 
-def main():
+def clear_vector_db():
+    url = f"{BASE_URL}/clear_vector_db"
+    response = requests.post(url)
+    return response.json()
 
+def main():
+    # Test add_to_vector_db
     folder_paths = ["/Users/pranav/Documents/Projects/pristine-server/main_content"]
     print("Adding files to vector DB...")
     result = add_to_vector_db(folder_paths)
-    print(f"Result: {result}")
+    print(f"Add result: {result}")
 
+    # Test search_files
     query = "climate change"
     print("\nSearching files...")
     try:
@@ -39,10 +45,39 @@ def main():
     except requests.exceptions.HTTPError as e:
         print(f"Error during search: {e}")
 
+    # Test delete_embeddings
     paths_to_delete = ["/Users/pranav/Documents/Projects/pristine-server/main_content/climate-change/climate_change.txt"]
     print("\nDeleting embeddings...")
     delete_result = delete_embeddings(paths_to_delete)
     print(f"Delete result: {delete_result}")
+
+    # Test search_files again to verify deletion
+    print("\nSearching files after deletion...")
+    try:
+        result = search_files(query)
+        print("Search results after deletion:")
+        for file_path in result['file_paths']:
+            print(f"- {file_path}")
+    except requests.exceptions.HTTPError as e:
+        print(f"Error during search: {e}")
+
+    # Test clear_vector_db
+    print("\nClearing vector DB...")
+    clear_result = clear_vector_db()
+    print(f"Clear result: {clear_result}")
+
+    # Test search_files one last time to verify clearing
+    print("\nSearching files after clearing DB...")
+    try:
+        result = search_files(query)
+        print("Search results after clearing DB:")
+        if result['file_paths']:
+            for file_path in result['file_paths']:
+                print(f"- {file_path}")
+        else:
+            print("No results Found")
+    except requests.exceptions.HTTPError as e:
+        print(f"Error during search: {e}")
 
 if __name__ == "__main__":
     main()
