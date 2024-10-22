@@ -52,7 +52,7 @@ class FileOrganizer:
                 files_info.append({
                     "filename": item,
                     "full_path": full_path,
-                    "relative_path": relative_path if keep_structure else ""
+                    "relative_path": relative_path
                 })
             elif os.path.isdir(full_path):
                 files_info.extend(self.get_all_files(full_path, keep_structure, base_path))
@@ -92,7 +92,6 @@ class FileOrganizer:
                                          cat_strength, preferences)
                 category = category.lower().replace(" ", "")
                 self.all_categories.add(category)
-                
                 if original_relative in self.file_mapping:
                     self.file_mapping[original_relative]["category"] = category
                 else:

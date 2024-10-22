@@ -106,7 +106,7 @@ def main():
     client = FileOrganizerClient()
     
     test_folder = "/Users/pranav/Documents/Projects/pristine-server/main_content"
-    keep_structure = True  # Set this to False to flatten the directory structure
+    keep_structure = False  # Set this to False to flatten the directory structure
     
     print(f"Analyzing folder: {test_folder}")
     print(f"Keep folder structure: {'Yes' if keep_structure else 'No'}")
