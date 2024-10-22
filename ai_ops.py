@@ -3,7 +3,7 @@ from langchain_ollama import OllamaLLM
 from langchain.prompts import PromptTemplate
 import re
 
-llm = OllamaLLM(model="llama3")#.2:1b-instruct-q4_K_M")
+llm = OllamaLLM(model="llama3.2:3b-instruct-q4_K_M")
 #llm = OllamaLLM(model="llava")
 
 rename_prompt = PromptTemplate(
@@ -62,6 +62,7 @@ categorize_prompt = PromptTemplate(
     - Separate words with hyphens
     - Provide only ONE category
     - The category must be directly related to the main topic of the file content
+    - The category name must not start with words like 'The', 'Is' etc.
     - Avoid overly broad or generic categories
 
     5. Additional instructions:
