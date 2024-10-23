@@ -119,6 +119,7 @@ def add_to_collection(paths_model: PathsModel):
     success = True
     files_to_process = []
     processed_files = {"text": 0, "image": 0}
+    file_info = []
 
     for path in paths:
         abs_path = os.path.abspath(path)
@@ -127,16 +128,18 @@ def add_to_collection(paths_model: PathsModel):
     for file_path in tqdm(files_to_process, desc="Creating Embeddings and Adding to DB"):
         print(f"Processing {file_path}")
         file_ext = get_file_extension(file_path)
+        file_info_entry = {"path": file_path}
         
         try:
             if file_ext in image_exts:
                 embedding = clip_embeddings.embed_image(file_path)
                 image_store.add_embeddings(
                     embeddings=[embedding],
-                    metadatas=[{'path' : file_path}],
+                    metadatas=[{'path': file_path}],
                     ids=[file_path]
                 )
                 processed_files["image"] += 1
+                file_info_entry["chunks"] = 1
             else:
                 content = extract_content(file_path)
                 if len(content) > 1000:
@@ -147,12 +150,15 @@ def add_to_collection(paths_model: PathsModel):
                             texts=[chunk],
                             ids=[id]
                         )
+                    file_info_entry["chunks"] = len(chunks)
                 else:
                     text_store.add_texts(
                         texts=[content],
                         ids=[file_path]
                     )
+                    file_info_entry["chunks"] = 1
                 processed_files["text"] += 1
+            file_info.append(file_info_entry)
         except Exception as e:
             print(f"Error processing {file_path}: {e}")
             success = False
@@ -161,7 +167,8 @@ def add_to_collection(paths_model: PathsModel):
         "success": success,
         "total_files_processed": len(files_to_process),
         "text_files_processed": processed_files["text"],
-        "image_files_processed": processed_files["image"]
+        "image_files_processed": processed_files["image"],
+        "file_info": file_info
     }
 
 @app.post("/search", response_model=SearchResult)
