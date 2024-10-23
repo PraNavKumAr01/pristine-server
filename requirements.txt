@@ -13,3 +13,10 @@ optimum[exporters,onnxruntime]==1.19.0
 langchain_chroma
 langchain_ollama
 langchain_hugginface
+clip@git+https://github.com/openai/CLIP.git
+onnx==1.14.0
+onnxconverter-common==1.13.0
+onnxruntime==1.16.1
+torch==1.13.1
+torchvision==0.14.1
+Pillow
