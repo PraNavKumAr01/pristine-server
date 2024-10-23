@@ -120,6 +120,7 @@ def add_to_collection(paths_model: PathsModel):
     files_to_process = []
     processed_files = {"text": 0, "image": 0}
     file_info = []
+    skipped_files = []
 
     for path in paths:
         abs_path = os.path.abspath(path)
@@ -127,7 +128,14 @@ def add_to_collection(paths_model: PathsModel):
 
     for file_path in tqdm(files_to_process, desc="Creating Embeddings and Adding to DB"):
         print(f"Processing {file_path}")
+        
+        # Get file extension using imported function
         file_ext = get_file_extension(file_path)
+        if file_ext is None:
+            print(f"Skipping unsupported file type: {file_path}")
+            skipped_files.append(file_path)
+            continue
+            
         file_info_entry = {"path": file_path}
         
         try:
@@ -165,9 +173,10 @@ def add_to_collection(paths_model: PathsModel):
 
     return {
         "success": success,
-        "total_files_processed": len(files_to_process),
+        "total_files_processed": len(files_to_process) - len(skipped_files),
         "text_files_processed": processed_files["text"],
         "image_files_processed": processed_files["image"],
+        "skipped_files": skipped_files,
         "file_info": file_info
     }
 
