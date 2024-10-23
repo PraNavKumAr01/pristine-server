@@ -8,11 +8,15 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 from content_extractor import extract_content
 from file_types import get_file_extension, image_exts
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Dict, Tuple
+from langchain.docstore.document import Document
+from chroma_new import CustomChroma
+from clip_embeddings import CLIPEmbeddings
 
 app = FastAPI()
 
-db_path = "/Users/pranav/Documents/Projects/smart-sort/image-src/db_new"
+text_db_path = "./text_db"
+image_db_path = "./image_db"
 
 model = SentenceTransformer(
    "/Users/pranav/Documents/Projects/pristine-server/embedding_model",
@@ -23,10 +27,20 @@ model = SentenceTransformer(
   },
 )
 
-embeddings = HuggingFaceEmbeddings(client = model)
-store = Chroma(embedding_function=embeddings, collection_name='content_embeddings', persist_directory=db_path)
+text_embeddings = HuggingFaceEmbeddings(client=model)
+clip_embeddings = CLIPEmbeddings()
 
-# Initialize the text splitter
+text_store = Chroma(
+    embedding_function=text_embeddings, 
+    collection_name='text_embeddings', 
+    persist_directory=text_db_path
+)
+image_store = CustomChroma(
+    embedding_function=clip_embeddings,
+    collection_name='image_embeddings',
+    persist_directory=image_db_path
+)
+
 text_splitter = RecursiveCharacterTextSplitter(
     chunk_size=1000,
     chunk_overlap=200,
@@ -71,20 +85,26 @@ def get_all_file_paths(path: str) -> List[str]:
 def process_file(file_path: str) -> bool:
     try:
         file_ext = get_file_extension(file_path)
-        content = extract_content(file_path)
         
+        if file_ext in image_exts:
+            embedding = clip_embeddings.embed_image(file_path)
+            image_store.add_embeddings(
+                embeddings=[embedding],
+                ids=[file_path]
+            )
+            return True
+            
+        content = extract_content(file_path)
         if len(content) > 1000:
             chunks = text_splitter.split_text(content)
-            print(len(chunks))
             for i, chunk in enumerate(chunks):
                 id = f"{file_path}<chunk>{i}"
-                print(id)
-                store.add_texts(
+                text_store.add_texts(
                     texts=[chunk],
                     ids=[id]
                 )
         else:
-            store.add_texts(
+            text_store.add_texts(
                 texts=[content],
                 ids=[file_path]
             )
@@ -98,17 +118,51 @@ def add_to_collection(paths_model: PathsModel):
     paths = paths_model.paths
     success = True
     files_to_process = []
+    processed_files = {"text": 0, "image": 0}
 
     for path in paths:
         abs_path = os.path.abspath(path)
         files_to_process.extend(get_all_file_paths(abs_path))
 
     for file_path in tqdm(files_to_process, desc="Creating Embeddings and Adding to DB"):
-        print(f"Embeddings {file_path}")
-        if not process_file(file_path):
+        print(f"Processing {file_path}")
+        file_ext = get_file_extension(file_path)
+        
+        try:
+            if file_ext in image_exts:
+                embedding = clip_embeddings.embed_image(file_path)
+                image_store.add_embeddings(
+                    embeddings=[embedding],
+                    metadatas=[{'path' : file_path}],
+                    ids=[file_path]
+                )
+                processed_files["image"] += 1
+            else:
+                content = extract_content(file_path)
+                if len(content) > 1000:
+                    chunks = text_splitter.split_text(content)
+                    for i, chunk in enumerate(chunks):
+                        id = f"{file_path}<chunk>{i}"
+                        text_store.add_texts(
+                            texts=[chunk],
+                            ids=[id]
+                        )
+                else:
+                    text_store.add_texts(
+                        texts=[content],
+                        ids=[file_path]
+                    )
+                processed_files["text"] += 1
+        except Exception as e:
+            print(f"Error processing {file_path}: {e}")
             success = False
 
-    return {"success": success, "files_processed": len(files_to_process)}
+    return {
+        "success": success,
+        "total_files_processed": len(files_to_process),
+        "text_files_processed": processed_files["text"],
+        "image_files_processed": processed_files["image"]
+    }
 
 @app.post("/search", response_model=SearchResult)
 async def search(query_model: QueryModel):
@@ -119,20 +173,19 @@ async def search(query_model: QueryModel):
     file_ids = []
     encountered_files = set()
 
-    results = store.similarity_search_with_score(query=query)
+    results = text_store.similarity_search_with_score(query=query)
     for res in results:
         page, score = res
         content = page.page_content
         if score <= 1.5:
             contents.append(content)
 
-    store_info = store.get()
+    store_info = text_store.get()
     for content in contents:
         try:
             index = store_info['documents'].index(content)
             corresponding_id = store_info['ids'][index]
 
-            # Extract the base file path (remove the chunk identifier if present)
             base_file_path = corresponding_id.split('<chunk>')[0]
 
             if base_file_path not in encountered_files:
@@ -142,6 +195,20 @@ async def search(query_model: QueryModel):
             print(f'The corresponding ID is: {corresponding_id}')
         except ValueError:
             print('The text was not found in the documents list.')
+
+    query_embedding = clip_embeddings.embed_text(query)
+    image_results = image_store.similarity_search_with_score(
+        query_embeddings=query_embedding,
+        k=4
+    )
+
+    for image_res in image_results:
+        page, score = image_res
+        meta = page.metadata['path']
+        if score <= 200:
+            file_ids.append(meta)
+
+    print(image_results)
 
     if file_ids:
         return SearchResult(file_paths=file_ids)
@@ -160,9 +227,12 @@ def delete_embeddings(paths_model: PathsModel):
 
     for file_path in tqdm(all_file_paths, desc="Deleting embeddings"):
         try:
-            # Delete all chunks associated with this file
-            ids_to_delete = [id for id in store.get()['ids'] if id.startswith(file_path)]
-            store.delete(ids=ids_to_delete)
+            file_ext = get_file_extension(file_path)
+            if file_ext in image_exts:
+                image_store.delete(ids=[file_path])
+            else:
+                ids_to_delete = [id for id in text_store.get()['ids'] if id.startswith(file_path)]
+                text_store.delete(ids=ids_to_delete)
             deleted_paths.append(file_path)
         except Exception as e:
             print(f"Failed to delete embedding for {file_path}: {e}")
@@ -173,15 +243,11 @@ def delete_embeddings(paths_model: PathsModel):
 @app.post("/clear_vector_db", response_model=ClearResult)
 def clear_vector_db():
     try:
-        # Get all IDs in the database
-        all_ids = store.get()['ids']
-        
-        # Delete all documents
-        store.delete(ids=all_ids)
-        
-        return ClearResult(success=True, message="Vector database cleared successfully")
+        text_store.delete(ids=text_store.get()['ids'])
+        image_store.delete(ids=image_store.get()['ids'])
+        return ClearResult(success=True, message="Vector databases cleared successfully")
     except Exception as e:
-        return ClearResult(success=False, message=f"Failed to clear vector database: {str(e)}")
+        return ClearResult(success=False, message=f"Failed to clear vector databases: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
