@@ -35,13 +35,16 @@ def main():
     print(f"Add result: {result}")
 
     # Test search_files
-    query = "two dogs"
+    query = "Blue sports car"
     print("\nSearching files...")
     try:
         result = search_files(query)
         print("Search results:")
-        for file_path in result['file_paths']:
-            print(f"- {file_path}")
+        try:
+            for file_path in result['file_paths']:
+                print(f"- {file_path}")
+        except ValueError as e:
+            print("No results found")
     except requests.exceptions.HTTPError as e:
         print(f"Error during search: {e}")
 
