@@ -35,7 +35,7 @@ def main():
     print(f"Add result: {result}")
 
     # Test search_files
-    query = "climate change"
+    query = "two dogs"
     print("\nSearching files...")
     try:
         result = search_files(query)
@@ -71,10 +71,13 @@ def main():
     try:
         result = search_files(query)
         print("Search results after clearing DB:")
-        if result['file_paths']:
-            for file_path in result['file_paths']:
-                print(f"- {file_path}")
-        else:
+        try:
+            if result['file_paths']:
+                for file_path in result['file_paths']:
+                    print(f"- {file_path}")
+            else:
+                print("No results Found")
+        except KeyError as e:
             print("No results Found")
     except requests.exceptions.HTTPError as e:
         print(f"Error during search: {e}")
