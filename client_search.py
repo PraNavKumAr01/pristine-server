@@ -27,12 +27,20 @@ def clear_vector_db():
     response = requests.post(url)
     return response.json()
 
+def get_db_ids():
+    url = f"{BASE_URL}/vector_db_ids"
+    response = requests.get(url)
+    return response.json()
+
 def main():
     # Test add_to_vector_db
     folder_paths = ["/Users/pranav/Documents/Projects/pristine-server/main_content"]
     print("Adding files to vector DB...")
     result = add_to_vector_db(folder_paths)
     print(f"Add result: {result}")
+
+    get_res = get_db_ids()
+    print(get_res)
 
     # Test search_files
     query = "Blue sports car"

@@ -17,7 +17,6 @@ def _results_to_docs_and_scores(results: Any) -> List[Tuple[Document, float]]:
     ]
 
 class CustomChroma(Chroma):
-
     @xor_args(("query_texts", "query_embeddings"))
     def __query_collection(
         self,
@@ -174,3 +173,22 @@ class CustomChroma(Chroma):
             )
 
         return _results_to_docs_and_scores(results)
+    
+    def get_all_ids_from_chroma(vectorstore: Chroma) -> List[str]:
+        """
+        Retrieves all document IDs currently stored in a ChromaDB collection.
+        
+        Args:
+            vectorstore (Chroma): The ChromaDB vector store instance
+            
+        Returns:
+            List[str]: A list of all document IDs in the collection
+        """
+        # Access the underlying ChromaDB collection
+        collection = vectorstore._collection
+        
+        # Get all IDs using ChromaDB's get() method
+        # Setting include parameter to just fetch IDs for efficiency
+        result = collection.get(include=['documents', 'ids'])
+        
+        return result['ids']

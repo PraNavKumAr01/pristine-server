@@ -30,7 +30,7 @@ model = SentenceTransformer(
 text_embeddings = HuggingFaceEmbeddings(client=model)
 clip_embeddings = CLIPEmbeddings()
 
-text_store = Chroma(
+text_store = CustomChroma(
     embedding_function=text_embeddings, 
     collection_name='text_embeddings', 
     persist_directory=text_db_path
@@ -63,6 +63,11 @@ class DeleteResult(BaseModel):
 class ClearResult(BaseModel):
     success: bool
     message: str
+
+class VectorDBIds(BaseModel):
+    text_ids: List[str]
+    image_ids: List[str]
+    total_ids: int
 
 def is_system_file(filename: str) -> bool:
     """Check if a file is a system file or hidden file."""
@@ -264,6 +269,20 @@ def clear_vector_db():
         return ClearResult(success=True, message="Vector databases cleared successfully")
     except Exception as e:
         return ClearResult(success=False, message=f"Failed to clear vector databases: {str(e)}")
+    
+@app.get("/vector_db_ids", response_model=VectorDBIds)
+def get_vector_db_ids():
+    try:
+        text_ids = text_store.get()['ids']
+        image_ids = image_store.get()['ids']
+        
+        return VectorDBIds(
+            text_ids=text_ids,
+            image_ids=image_ids,
+            total_ids=len(text_ids) + len(image_ids)
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch vector database IDs: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
