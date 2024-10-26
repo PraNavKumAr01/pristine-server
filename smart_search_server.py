@@ -2,14 +2,12 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from tqdm import tqdm
 import os
-from langchain_community.vectorstores import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 from content_extractor import extract_content
 from file_types import get_file_extension, image_exts
-from typing import List, Optional, Any, Dict, Tuple
-from langchain.docstore.document import Document
+from typing import List
 from chroma_new import CustomChroma
 from clip_embeddings import CLIPEmbeddings
 
@@ -134,7 +132,6 @@ def add_to_collection(paths_model: PathsModel):
     for file_path in tqdm(files_to_process, desc="Creating Embeddings and Adding to DB"):
         print(f"Processing {file_path}")
         
-        # Get file extension using imported function
         file_ext = get_file_extension(file_path)
         if file_ext is None:
             print(f"Skipping unsupported file type: {file_path}")
@@ -161,6 +158,7 @@ def add_to_collection(paths_model: PathsModel):
                         id = f"{file_path}<chunk>{i}"
                         text_store.add_texts(
                             texts=[chunk],
+                            metadatas=[{'path': file_path}],
                             ids=[id]
                         )
                     file_info_entry["chunks"] = len(chunks)
@@ -190,32 +188,23 @@ async def search(query_model: QueryModel):
     query = query_model.query
     print(f"Searching for {query}")
 
-    contents = []
-    file_ids = []
-    encountered_files = set()
-
-    results = text_store.similarity_search_with_score(query=query)
+    file_scores = {}
+    
+    results = text_store.similarity_search_with_score(query=query, k=10)
+    
     for res in results:
         page, score = res
-        content = page.page_content
         if score <= 1.5:
-            contents.append(content)
-
-    store_info = text_store.get()
-    for content in contents:
-        try:
-            index = store_info['documents'].index(content)
-            corresponding_id = store_info['ids'][index]
-
-            base_file_path = corresponding_id.split('<chunk>')[0]
-
-            if base_file_path not in encountered_files:
-                encountered_files.add(base_file_path)
-                file_ids.append(base_file_path)
-
-            print(f'The corresponding ID is: {corresponding_id}')
-        except ValueError:
-            print('The text was not found in the documents list.')
+            if '<chunk>' in page.metadata.get('path', ''):
+                base_file_path = page.metadata['path'].split('<chunk>')[0]
+            else:
+                base_file_path = page.metadata['path']
+            
+            if base_file_path not in file_scores or score < file_scores[base_file_path]['score']:
+                file_scores[base_file_path] = {
+                    'score': score,
+                    'type': 'text'
+                }
 
     query_embedding = clip_embeddings.embed_text(query)
     image_results = image_store.similarity_search_with_score(
@@ -225,14 +214,27 @@ async def search(query_model: QueryModel):
 
     for image_res in image_results:
         page, score = image_res
-        meta = page.metadata['path']
-        if score <= 200:
-            file_ids.append(meta)
+        file_path = page.metadata['path']
+        if score <= 185:
+            if file_path not in file_scores or score < file_scores[file_path]['score']:
+                file_scores[file_path] = {
+                    'score': score,
+                    'type': 'image'
+                }
 
-    print(image_results)
+    print(f"File scores before sorting {file_scores}")
 
-    if file_ids:
-        return SearchResult(file_paths=file_ids)
+    sorted_results = sorted(
+        file_scores.items(),
+        key=lambda x: x[1]['score']
+    )
+
+    print(f"File scores after sorting {sorted_results}")
+
+    sorted_file_ids = [file_path for file_path, _ in sorted_results]
+
+    if sorted_file_ids:
+        return SearchResult(file_paths=sorted_file_ids)
     else:
         raise HTTPException(status_code=404, detail="No relevant files found.")
 

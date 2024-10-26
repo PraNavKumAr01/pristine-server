@@ -40,10 +40,10 @@ def main():
     print(f"Add result: {result}")
 
     get_res = get_db_ids()
-    print(get_res)
+    #print(get_res)
 
     # Test search_files
-    query = "Blue sports car"
+    query = "GPT-4V"
     print("\nSearching files...")
     try:
         result = search_files(query)
