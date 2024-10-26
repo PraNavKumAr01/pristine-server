@@ -10,9 +10,9 @@ app = FastAPI()
 
 class OrganizeRequest(BaseModel):
     folder_path: str
-    rename: bool = False
-    categorize: bool = False
-    cat_strength: int = 5
+    rename: bool = True
+    categorize: bool = True
+    cat_strength: int = 1
     preferences: str = ""
     keep_structure: bool = True
 
@@ -21,7 +21,7 @@ class FileInfo(BaseModel):
     new_name: str
     category: str
     description: str
-    relative_path: str = ""  # Added to track original file location
+    relative_path: str = ""
 
 class ApplyRequest(BaseModel):
     folder_path: str
@@ -68,8 +68,11 @@ class FileOrganizer:
 
         if rename:
             for file_info in all_files:
-                content = extract_content(file_info["full_path"])
                 file_ext = get_file_extension(file_info["full_path"])
+                if file_ext in ['.png', '.jpg', '.jpeg']:
+                    content = file_info["full_path"]
+                else:
+                    content = extract_content(file_info["full_path"])
                 new_content = suggest_filename(content, used_names, file_ext, preferences)
                 new_name = new_content["filename"] + file_ext
                 desc = new_content["description"]
@@ -86,7 +89,11 @@ class FileOrganizer:
         if categorize:
             for file_info in all_files:
                 original_relative = os.path.join(file_info["relative_path"], file_info["filename"])
-                content = extract_content(file_info["full_path"])
+                file_ext = get_file_extension(file_info["full_path"])
+                if file_ext in ['.png', '.jpg', '.jpeg']:
+                    content = file_info["full_path"]
+                else:
+                    content = extract_content(file_info["full_path"])
                 category = suggest_category(content, ",".join(self.all_categories), 
                                          get_file_extension(file_info["full_path"]), 
                                          cat_strength, preferences)

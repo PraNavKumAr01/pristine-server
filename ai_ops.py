@@ -2,9 +2,10 @@ import json
 from langchain_ollama import OllamaLLM
 from langchain.prompts import PromptTemplate
 import re
+from blip_caption import BLIPHandler
 
 llm = OllamaLLM(model="llama3.2:3b-instruct-q4_K_M")
-#llm = OllamaLLM(model="llava")
+blip_model = BLIPHandler(model_dir='./experiments/models/blip')
 
 rename_prompt = PromptTemplate(
     input_variables=["file_content", "used_names", "mime_type", "additional_info"],
@@ -116,40 +117,9 @@ def suggest_filename(content, used_names, mime_type, additional_info = ""):
     print(additional_info)
     print(mime_type)
     if mime_type in ['.png', '.jpg', '.jpeg']:
-        llm_with_image_context = llm.bind(images=[content])
-        prompt = f"""You are an image file naming assistant. Your task is to suggest an appropriate filename based on the image provided, following these strict guidelines.
-        You have a base64 encoded string of an image.
-
-        1. Filename requirements:
-        - Use only lowercase letters (a-z), numbers (0-9), hyphens (-) and underscores (_)
-        - Start the filename with a letter
-        - Do not use spaces or any special characters
-        - Ensure no two words are stuck together, separate words should have a '-'
-        - Keep the filename concise but descriptive (max 50 characters, excluding extension)
-        - Ensure the filename is unique and not in this list: {used_names}
-
-        3. Provide a brief description of the image content and explain your reasoning for the chosen filename.
-
-        4. Return your response as a JSON object with the following structure:
-            {{
-             "filename": "suggested-filename",
-             "description": "Brief description of the image content",
-            }}
-
-        Here is some additional information from the user, these instructions are very important:
-        {additional_info}
-
-        5. Semantic Meaning:
-        - Make sure to suggest a file name for the image based on the broader sense and semantic meaning of what is going on in the image instead of exactly what you see
-
-        - Provide only the new file name without adding any extensions, Your response should be like jogging_people not jogging_people.jpeg
-
-        - Your response JSON should always contain both filename and description fields.
-
-        Provide only the JSON object in your response, without any additional text or explanation."""
-        
-        json_response = llm_with_image_context.invoke(prompt)
-
+        image_caption = blip_model.generate_caption(content)
+        print(image_caption)
+        json_response = rename_chain.invoke({"file_content": image_caption,"used_names": used_names,"mime_type": mime_type,"additional_info": additional_info})
     else:
         json_response = rename_chain.invoke({"file_content": content,"used_names": used_names,"mime_type": mime_type,"additional_info": additional_info})
     
@@ -161,30 +131,10 @@ def suggest_filename(content, used_names, mime_type, additional_info = ""):
 def suggest_category(content, existing_categories, mime_type, cat_strength, additional_info = ""):
     print(additional_info)
     if mime_type in ['.png', '.jpg', '.jpeg']:
-        llm_with_image_context = llm.bind(images=[content])
-        prompt = f"""
-        You are an image file categorization assistant. Your task is to suggest an appropriate category or folder name for organizing a file based on its content, following these strict guidelines:
-        2. Categorization strength : {cat_strength}
-        This value determines how broadly or specifically the category should be chosen.
-        If this value is 1, then try to choose from one of the existing categories untill there is nothing that can broadly fit this content
-        If this values is 5, then try to create new categories even if there is an existing category that broadly fits this content
+        image_caption = blip_model.generate_caption(content)
+        print(image_caption)
 
-        3. If this content can be categorised into any of these existing categories and categorization strength is 1, just return back that category name instead of a new one.
-        The existing categories are :
-        {existing_categories}
-
-        4. Format your response as a single word or underscore-separated words
-
-        Example good response: mental-health-awareness
-        Example bad response: MENTAL#Health or this-looks-like-mental-health    
-
-        Here is some additional information from the user, these instructions are very important.
-        {additional_info}
-
-        Provide only the category name in your response, without any additional text or explanation.
-        """
-
-        cat = llm_with_image_context.invoke(prompt)
+        cat = categorize_chain.invoke({"file_content": image_caption, "existing_categories": existing_categories, "cat_strength": cat_strength, "additional_info" : additional_info})
         cat = re.sub(r'(?<!\\)\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})', '', cat)
         return cat
     else:
