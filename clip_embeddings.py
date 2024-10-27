@@ -9,8 +9,8 @@ from langchain.embeddings.base import Embeddings
 class CLIPEmbeddings(Embeddings):
     def __init__(
         self,
-        image_model_path: str = "/Users/pranav/Documents/Projects/pristine-server/experiments/models/clip-image-encoder-quant-int8.ort",
-        text_model_path: str = "/Users/pranav/Documents/Projects/pristine-server/experiments/models/clip-text-encoder-quant-int8.ort"
+        image_model_path: str,
+        text_model_path: str
     ):
         self.image_model_path = image_model_path
         self.text_model_path = text_model_path

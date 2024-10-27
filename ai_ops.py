@@ -5,7 +5,7 @@ import re
 from blip_caption import BLIPHandler
 
 llm = OllamaLLM(model="llama3.2:3b-instruct-q4_K_M")
-blip_model = BLIPHandler(model_dir='./experiments/models/blip')
+blip_model = BLIPHandler()
 
 rename_prompt = PromptTemplate(
     input_variables=["file_content", "used_names", "mime_type", "additional_info"],

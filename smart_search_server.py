@@ -2,31 +2,30 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from tqdm import tqdm
 import os
+from pathlib import Path
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from sentence_transformers import SentenceTransformer
 from content_extractor import extract_content
 from file_types import get_file_extension, image_exts
 from typing import List
 from chroma_new import CustomChroma
 from clip_embeddings import CLIPEmbeddings
+from text_embedding import SentenceTransformerHandler
+from clip_model import CLIPModelHandler
 
 app = FastAPI()
 
-text_db_path = "./text_db"
-image_db_path = "./image_db"
+text_db_path = Path.cwd() / "text_db"
+image_db_path = Path.cwd() / "image_db"
 
-model = SentenceTransformer(
-   "/Users/pranav/Documents/Projects/pristine-server/embedding_model",
-   backend="onnx",
-   model_kwargs={
-      "file_name": "model_qint8_avx512_vnni.onnx",
-      "provider" : "CPUExecutionProvider"
-  },
-)
+text_handler = SentenceTransformerHandler()
+model = text_handler.get_model()
+
+clip_handler = CLIPModelHandler()
+image_model_path, text_model_path = clip_handler.get_model_paths()
 
 text_embeddings = HuggingFaceEmbeddings(client=model)
-clip_embeddings = CLIPEmbeddings()
+clip_embeddings = CLIPEmbeddings(image_model_path, text_model_path)
 
 text_store = CustomChroma(
     embedding_function=text_embeddings, 
@@ -165,6 +164,7 @@ def add_to_collection(paths_model: PathsModel):
                 else:
                     text_store.add_texts(
                         texts=[content],
+                        metadatas=[{'path': file_path}],
                         ids=[file_path]
                     )
                     file_info_entry["chunks"] = 1
@@ -288,4 +288,4 @@ def get_vector_db_ids():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8080)

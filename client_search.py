@@ -43,7 +43,7 @@ def main():
     #print(get_res)
 
     # Test search_files
-    query = "GPT-4V"
+    query = "Physical Activity"
     print("\nSearching files...")
     try:
         result = search_files(query)
