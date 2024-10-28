@@ -2,14 +2,16 @@ import requests
 import json
 from typing import List, Dict
 from pathlib import Path
+import os
 
 class FileInfo:
-    def __init__(self, original: str, new_name: str, category: str, description: str, relative_path: str = ""):
+    def __init__(self, original: str, new_name: str, category: str, description: str, relative_path: str = "", parent_dir: str = ""):
         self.original = original
         self.new_name = new_name
         self.category = category
         self.description = description
         self.relative_path = relative_path
+        self.parent_dir = parent_dir 
 
     def to_dict(self) -> Dict[str, str]:
         return {
@@ -17,7 +19,8 @@ class FileInfo:
             "new_name": self.new_name,
             "category": self.category,
             "description": self.description,
-            "relative_path": self.relative_path
+            "relative_path": self.relative_path,
+            "parent_dir": self.parent_dir  # Include parent_dir in the dictionary
         }
 
     def __str__(self):
@@ -29,7 +32,7 @@ class FileOrganizerClient:
         self.base_url = base_url
 
     def preview_changes(self, 
-                       folder_path: str, 
+                       folder_paths: List[str], 
                        rename: bool = True, 
                        categorize: bool = True, 
                        cat_strength: int = 3, 
@@ -37,7 +40,7 @@ class FileOrganizerClient:
                        keep_structure: bool = True) -> List[FileInfo]:
         url = f"{self.base_url}/preview"
         payload = {
-            "folder_path": folder_path,
+            "folder_paths": folder_paths,
             "rename": rename,
             "categorize": categorize,
             "cat_strength": cat_strength,
@@ -48,16 +51,29 @@ class FileOrganizerClient:
         response.raise_for_status()
         return [FileInfo(**item) for item in response.json()]
 
-    def apply_changes(self, folder_path: str, changes: List[FileInfo], keep_structure: bool = True):
-        url = f"{self.base_url}/apply"
-        payload = {
-            "folder_path": folder_path,
-            "changes": [change.to_dict() for change in changes],
-            "keep_structure": keep_structure
-        }
-        response = requests.post(url, json=payload)
-        response.raise_for_status()
-        return response.json()
+    def apply_changes(self, changes: List[FileInfo], keep_structure: bool = True):
+        for change in changes:
+            original_path = os.path.join(change.parent_dir, change.relative_path, change.original)
+
+            if keep_structure:
+                category_path = os.path.join(change.parent_dir, change.relative_path, change.category)
+            else:
+                category_path = os.path.join(change.parent_dir, change.category)
+
+            os.makedirs(category_path, exist_ok=True)
+
+            new_path = os.path.join(category_path, change.new_name)
+            
+            counter = 1
+            base_name, ext = os.path.splitext(change.new_name)
+            while os.path.exists(new_path):
+                new_name = f"{base_name}_{counter}{ext}"
+                new_path = os.path.join(category_path, new_name)
+                counter += 1
+            
+            os.rename(original_path, new_path)
+
+        return f"Applied changes to {len(changes)} files."
 
 def print_preview_summary(preview: List[FileInfo], keep_structure: bool):
     """Print a structured summary of the proposed changes."""
@@ -105,15 +121,19 @@ def print_preview_summary(preview: List[FileInfo], keep_structure: bool):
 def main():
     client = FileOrganizerClient()
     
-    test_folder = "/Users/pranav/Documents/Projects/pristine-server/main_content"
+    test_folders = [
+        "/Users/pranav/Documents/Projects/pristine-server/main_content/folder1",
+        "/Users/pranav/Documents/Projects/pristine-server/main_content/folder2"
+    ]
+    
     keep_structure = False  # Set this to False to flatten the directory structure
     
-    print(f"Analyzing folder: {test_folder}")
+    print(f"Analyzing folders: {test_folders}")
     print(f"Keep folder structure: {'Yes' if keep_structure else 'No'}")
     
     try:
         preview = client.preview_changes(
-            folder_path=test_folder,
+            folder_paths=test_folders,
             rename=True,
             categorize=True,
             cat_strength=1,
@@ -132,8 +152,8 @@ def main():
             
             if choice == 'a':
                 print("\nApplying changes...")
-                result = client.apply_changes(test_folder, preview, keep_structure)
-                print("Result:", result['message'])
+                result = client.apply_changes(preview, keep_structure)
+                print("Result:", result)
                 break
             elif choice == 'v':
                 print("\nRaw preview data:")
