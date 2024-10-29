@@ -47,7 +47,7 @@ class SentenceTransformerHandler:
                 )
                 
                 print("Saving SentenceTransformer model to local storage...")
-                self.model.save(str(model_path))
+                self.model.save(str(self.model_dir))
                 
             print("✓ SentenceTransformer model ready!")
             

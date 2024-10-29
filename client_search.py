@@ -2,7 +2,7 @@ import requests
 import json
 from typing import List
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8080"
 
 def add_to_vector_db(paths: List[str]):
     url = f"{BASE_URL}/add_to_vector_db"

@@ -15,8 +15,8 @@ from clip_model import CLIPModelHandler
 
 app = FastAPI()
 
-text_db_path = Path.cwd() / "text_db"
-image_db_path = Path.cwd() / "image_db"
+text_db_path = str(Path.cwd() / "text_db")
+image_db_path = str(Path.cwd() / "image_db")
 
 text_handler = SentenceTransformerHandler()
 model = text_handler.get_model()
