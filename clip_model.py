@@ -9,7 +9,7 @@ class CLIPModelHandler:
             model_dir: Directory to store the model files. If None, uses CWD/models/clip-onnx-int8
         """
         if model_dir is None:
-            model_dir = Path.cwd() / 'models' / 'clip-onnx-int8'
+            model_dir = str(Path.cwd() / 'models' / 'clip-onnx-int8')
         self.model_dir = Path(model_dir)
         self.model_repo = "PK03/clip-onnx-int8"
         self.files_to_download = [

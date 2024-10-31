@@ -12,7 +12,7 @@ class BLIPHandler:
             model_dir: Directory to store the model files. If None, uses CWD/models/blip-caption
         """
         if model_dir is None:
-            model_dir = Path.cwd() / 'models' / 'blip-caption'
+            model_dir = str(Path.cwd() / 'models' / 'blip-caption')
         self.model_dir = Path(model_dir)
         self.model_name = "Salesforce/blip-image-captioning-base"
         self.processor = None

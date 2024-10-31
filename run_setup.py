@@ -8,7 +8,7 @@ def setup_models():
     Downloads and sets up CLIP, BLIP, and SentenceTransformer models
     in the current working directory under the models directory
     """
-    base_dir = Path.cwd() / 'models'
+    base_dir = str(Path.cwd() / 'models')
     base_dir.mkdir(exist_ok=True)
     
     model_paths = {}

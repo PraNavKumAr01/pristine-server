@@ -10,7 +10,7 @@ class SentenceTransformerHandler:
             model_dir: Directory to store the model files. If None, uses CWD/models/text-onnx-int8
         """
         if model_dir is None:
-            model_dir = Path.cwd() / 'models' / 'text-onnx-int8'
+            model_dir = str(Path.cwd() / 'models' / 'text-onnx-int8')
         self.model_dir = Path(model_dir)
         self.model_name = "all-MiniLM-L6-v2"
         self.onnx_version = "model_qint8_avx512_vnni.onnx"
