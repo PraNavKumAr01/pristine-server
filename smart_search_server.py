@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from tqdm import tqdm
 import os
+from PIL import Image
 from pathlib import Path
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -9,9 +10,8 @@ from content_extractor import extract_content
 from file_types import get_file_extension, image_exts
 from typing import List
 from chroma_new import CustomChroma
-from clip_embeddings import CLIPEmbeddings
+from clip_embeddings import ClipModelHandler
 from text_embedding import SentenceTransformerHandler
-from clip_model import CLIPModelHandler
 
 app = FastAPI()
 
@@ -21,11 +21,10 @@ image_db_path = str(Path.cwd() / "image_db")
 text_handler = SentenceTransformerHandler()
 model = text_handler.get_model()
 
-clip_handler = CLIPModelHandler()
-image_model_path, text_model_path = clip_handler.get_model_paths()
+clip_handler = ClipModelHandler()
+clip_model = clip_handler.get_model()
 
 text_embeddings = HuggingFaceEmbeddings(client=model)
-clip_embeddings = CLIPEmbeddings(image_model_path, text_model_path)
 
 text_store = CustomChroma(
     embedding_function=text_embeddings, 
@@ -33,7 +32,7 @@ text_store = CustomChroma(
     persist_directory=text_db_path
 )
 image_store = CustomChroma(
-    embedding_function=clip_embeddings,
+    embedding_function=clip_model,
     collection_name='image_embeddings',
     persist_directory=image_db_path
 )
@@ -89,7 +88,7 @@ def process_file(file_path: str) -> bool:
         file_ext = get_file_extension(file_path)
         
         if file_ext in image_exts:
-            embedding = clip_embeddings.embed_image(file_path)
+            embedding = clip_model.encode(Image.open(file_path)).tolist()[0]
             image_store.add_embeddings(
                 embeddings=[embedding],
                 ids=[file_path]
@@ -141,7 +140,7 @@ def add_to_collection(paths_model: PathsModel):
         
         try:
             if file_ext in image_exts:
-                embedding = clip_embeddings.embed_image(file_path)
+                embedding = clip_model.encode(Image.open(file_path)).tolist()[0]
                 image_store.add_embeddings(
                     embeddings=[embedding],
                     metadatas=[{'path': file_path}],
@@ -206,7 +205,8 @@ async def search(query_model: QueryModel):
                     'type': 'text'
                 }
 
-    query_embedding = clip_embeddings.embed_text(query)
+    query_embedding = clip_model.encode(query).tolist()[0]
+    print(query_embedding)
     image_results = image_store.similarity_search_with_score(
         query_embeddings=query_embedding,
         k=4

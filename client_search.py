@@ -1,5 +1,4 @@
 import requests
-import json
 from typing import List
 
 BASE_URL = "http://localhost:8080"
@@ -43,7 +42,7 @@ def main():
     #print(get_res)
 
     # Test search_files
-    query = "Physical Activity"
+    query = "Blue Car"
     print("\nSearching files...")
     try:
         result = search_files(query)

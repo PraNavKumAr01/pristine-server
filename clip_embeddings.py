@@ -1,57 +1,58 @@
-import onnxruntime as ort
-from PIL import Image
-import clip
-from torchvision import transforms
-import numpy as np
-from typing import List
-from langchain.embeddings.base import Embeddings
+from sentence_transformers import SentenceTransformer
+from pathlib import Path
+from pathlib import Path
 
-class CLIPEmbeddings(Embeddings):
-    def __init__(
-        self,
-        image_model_path: str,
-        text_model_path: str
-    ):
-        self.image_model_path = image_model_path
-        self.text_model_path = text_model_path
-        self.image_session = ort.InferenceSession(image_model_path)
-        self.text_session = ort.InferenceSession(text_model_path)
+def is_folder_empty(folder_path):
+    return not any(Path(folder_path).iterdir())
+
+class ClipModelHandler:
+    def __init__(self, model_dir=None):
+        """
+        Initialize SentenceTransformer model handler with local storage capability
+        Args:
+            model_dir: Directory to store the model files. If None, uses CWD/models/clip-model
+        """
+        if model_dir is None:
+            model_dir = str(Path.cwd() / 'models' / 'clip-model')
+        self.model_dir = Path(model_dir)
+        self.model_name = "clip-ViT-B-16"
+        self.model = None
         
-        self.preprocess = transforms.Compose([
-            transforms.Resize(224),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            transforms.Normalize(
-                mean=[0.48145466, 0.4578275, 0.40821073],
-                std=[0.26862954, 0.26130258, 0.27577711]
-            )
-        ])
+        self.model_dir.mkdir(parents=True, exist_ok=True)
+        self.load_or_download_model()
 
-    def _preprocess_image(self, image_path: str) -> np.ndarray:
-        image = Image.open(image_path).convert("RGB")
-        image = self.preprocess(image).unsqueeze(0).to('cpu')
-        return image.numpy()
+    def load_or_download_model(self):
+        """Load model from local storage or download if not available"""
+        model_path = self.model_dir
+        print(f"Model path: {model_path}")
+        
+        try:
+            if not is_folder_empty(model_path):
+                print("Loading Clip model from local storage...")
+                self.model = SentenceTransformer(
+                    str(self.model_dir),
+                )
+            else:
+                print("Downloading Clip model...")
+                self.model = SentenceTransformer(
+                    self.model_name,
+                )
+                
+                print("Saving Clip model to local storage...")
+                self.model.save(str(self.model_dir))
+                
+            print("✓ Clip model ready!")
+            
+        except Exception as e:
+            print(f"✗ Error loading/downloading Clip model: {e}")
+            raise
 
-    def embed_image(self, image_path: str) -> List[float]:
-        input_name = self.image_session.get_inputs()[0].name
-        image_input = self._preprocess_image(image_path)
-        outputs = self.image_session.run(None, {input_name: image_input})
-        return outputs[0][0].tolist()
-
-    def embed_text(self, text: str) -> List[float]:
-        input_name = self.text_session.get_inputs()[0].name
-        token_input = clip.tokenize([text]).to("cpu")
-        outputs = self.text_session.run(None, {input_name: token_input.numpy()})
-        return outputs[0][0].tolist()
-
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        """Embed a list of documents using the text encoder"""
-        embeddings = []
-        for text in texts:
-            embedding = self.embed_text(text)
-            embeddings.append(embedding)
-        return embeddings
-
-    def embed_query(self, text: str) -> List[float]:
-        """Embed a query using the text encoder"""
-        return self.embed_text(text)
+    def get_model(self):
+        """
+        Get the loaded SentenceTransformer model
+        Returns:
+            SentenceTransformer: Loaded model instance
+        """
+        if self.model is None:
+            print("Model is not loaded.")
+        return self.model
