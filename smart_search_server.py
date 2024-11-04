@@ -12,6 +12,10 @@ from typing import List
 from chroma_new import CustomChroma
 from clip_embeddings import ClipModelHandler
 from text_embedding import SentenceTransformerHandler
+from image_ocr import SmartOCR
+import warnings
+
+warnings.filterwarnings("ignore")
 
 app = FastAPI()
 
@@ -23,6 +27,8 @@ model = text_handler.get_model()
 
 clip_handler = ClipModelHandler()
 clip_model = clip_handler.get_model()
+
+ocr_handler = SmartOCR()
 
 text_embeddings = HuggingFaceEmbeddings(client=model)
 
@@ -140,6 +146,15 @@ def add_to_collection(paths_model: PathsModel):
         
         try:
             if file_ext in image_exts:
+                # Perform OCR
+                ocr_text = ocr_handler.process_image(file_path)
+                if ocr_text:
+                    print(f"Doing OCR for {file_path}, found text {ocr_text}")
+                    text_store.add_texts(
+                            texts=[ocr_text],
+                            metadatas=[{'path': file_path}],
+                            ids=[file_path]
+                        )
                 embedding = clip_model.encode(Image.open(file_path)).tolist()[0]
                 image_store.add_embeddings(
                     embeddings=[embedding],

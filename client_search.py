@@ -42,7 +42,7 @@ def main():
     #print(get_res)
 
     # Test search_files
-    query = "Blue Car"
+    query = "Smart Search Files"
     print("\nSearching files...")
     try:
         result = search_files(query)

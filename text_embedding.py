@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
+import shutil
 
 class SentenceTransformerHandler:
     def __init__(self, model_dir=None):
@@ -22,6 +23,7 @@ class SentenceTransformerHandler:
     def load_or_download_model(self):
         """Load model from local storage or download if not available"""
         model_path = self.model_dir / self.onnx_version
+        download_path = self.model_dir / "onnx" /self.onnx_version
         print(f"Model path: {model_path}")
         
         try:
@@ -48,6 +50,7 @@ class SentenceTransformerHandler:
                 
                 print("Saving SentenceTransformer model to local storage...")
                 self.model.save(str(self.model_dir))
+                shutil.move(download_path, self.model_dir)
                 
             print("✓ SentenceTransformer model ready!")
             
