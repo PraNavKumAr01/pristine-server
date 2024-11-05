@@ -3,9 +3,11 @@ from langchain_ollama import OllamaLLM
 from langchain.prompts import PromptTemplate
 import re
 from blip_caption import BLIPHandler
+from image_ocr import SmartOCR
 
 llm = OllamaLLM(model="llama3.2:3b-instruct-q4_K_M")
 blip_model = BLIPHandler()
+ocr_model = SmartOCR()
 
 rename_prompt = PromptTemplate(
     input_variables=["file_content", "used_names", "mime_type", "additional_info"],
@@ -117,9 +119,14 @@ def suggest_filename(content, used_names, mime_type, additional_info = ""):
     print(additional_info)
     print(mime_type)
     if mime_type in ['.png', '.jpg', '.jpeg']:
+        image_content = ""
+        ocr_text = ocr_model.process_image(content)
+        if ocr_text:
+            image_content += ocr_text
         image_caption = blip_model.generate_caption(content)
-        print(image_caption)
-        json_response = rename_chain.invoke({"file_content": image_caption,"used_names": used_names,"mime_type": mime_type,"additional_info": additional_info})
+        image_content += image_caption
+        print(image_content)
+        json_response = rename_chain.invoke({"file_content": image_content,"used_names": used_names,"mime_type": mime_type,"additional_info": additional_info})
     else:
         json_response = rename_chain.invoke({"file_content": content,"used_names": used_names,"mime_type": mime_type,"additional_info": additional_info})
     
@@ -131,10 +138,15 @@ def suggest_filename(content, used_names, mime_type, additional_info = ""):
 def suggest_category(content, existing_categories, mime_type, cat_strength, additional_info = ""):
     print(additional_info)
     if mime_type in ['.png', '.jpg', '.jpeg']:
+        image_content = ""
+        ocr_text = ocr_model.process_image(content)
+        if ocr_text:
+            image_content += ocr_text
         image_caption = blip_model.generate_caption(content)
-        print(image_caption)
+        image_content += image_caption
+        print(image_content)
 
-        cat = categorize_chain.invoke({"file_content": image_caption, "existing_categories": existing_categories, "cat_strength": cat_strength, "additional_info" : additional_info})
+        cat = categorize_chain.invoke({"file_content": image_content, "existing_categories": existing_categories, "cat_strength": cat_strength, "additional_info" : additional_info})
         cat = re.sub(r'(?<!\\)\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})', '', cat)
         return cat
     else:
