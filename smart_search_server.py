@@ -89,37 +89,6 @@ def get_all_file_paths(path: str) -> List[str]:
     else:
         return []
 
-def process_file(file_path: str) -> bool:
-    try:
-        file_ext = get_file_extension(file_path)
-        
-        if file_ext in image_exts:
-            embedding = clip_model.encode(Image.open(file_path)).tolist()[0]
-            image_store.add_embeddings(
-                embeddings=[embedding],
-                ids=[file_path]
-            )
-            return True
-            
-        content = extract_content(file_path)
-        if len(content) > 1000:
-            chunks = text_splitter.split_text(content)
-            for i, chunk in enumerate(chunks):
-                id = f"{file_path}<chunk>{i}"
-                text_store.add_texts(
-                    texts=[chunk],
-                    ids=[id]
-                )
-        else:
-            text_store.add_texts(
-                texts=[content],
-                ids=[file_path]
-            )
-        return True
-    except Exception as e:
-        print(f"Error processing {file_path}: {e}")
-        return False
-
 @app.post("/add_to_vector_db")
 def add_to_collection(paths_model: PathsModel):
     paths = paths_model.paths
