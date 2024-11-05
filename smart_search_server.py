@@ -147,7 +147,7 @@ def add_to_collection(paths_model: PathsModel):
         try:
             if file_ext in image_exts:
                 # Perform OCR
-                ocr_text = ocr_handler.process_image(file_path)
+                ocr_text = ocr_handler.process_image(Image.open(file_path))
                 if ocr_text:
                     print(f"Doing OCR for {file_path}, found text {ocr_text}")
                     text_store.add_texts(

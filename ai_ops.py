@@ -2,6 +2,7 @@ import json
 from langchain_ollama import OllamaLLM
 from langchain.prompts import PromptTemplate
 import re
+from PIL import Image
 from blip_caption import BLIPHandler
 from image_ocr import SmartOCR
 
@@ -120,7 +121,7 @@ def suggest_filename(content, used_names, mime_type, additional_info = ""):
     print(mime_type)
     if mime_type in ['.png', '.jpg', '.jpeg']:
         image_content = ""
-        ocr_text = ocr_model.process_image(content)
+        ocr_text = ocr_model.process_image(Image.open(content))
         if ocr_text:
             image_content += ocr_text
         image_caption = blip_model.generate_caption(content)
@@ -139,7 +140,7 @@ def suggest_category(content, existing_categories, mime_type, cat_strength, addi
     print(additional_info)
     if mime_type in ['.png', '.jpg', '.jpeg']:
         image_content = ""
-        ocr_text = ocr_model.process_image(content)
+        ocr_text = ocr_model.process_image(Image.open(content))
         if ocr_text:
             image_content += ocr_text
         image_caption = blip_model.generate_caption(content)
