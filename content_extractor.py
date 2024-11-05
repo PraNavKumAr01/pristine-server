@@ -5,6 +5,7 @@ from PIL import Image
 import io
 import pandas as pd
 from image_ocr import SmartOCR
+from blip_caption import BLIPHandler
 from file_types import image_exts, doc_exts, pdf_exts, excel_exts, csv_exts, get_file_extension
 
 def extract_image_content(file_path):
@@ -19,6 +20,7 @@ def extract_pdf_content(pdf_path):
     doc = fitz.open(pdf_path)
     full_text = ""
     ocr_handler = SmartOCR()
+    blip_handler = BLIPHandler()
 
     for page_num in range(len(doc)):
         page = doc[page_num]
@@ -49,6 +51,8 @@ def extract_pdf_content(pdf_path):
             ocr_text = ocr_handler.process_image(pil_image)
             if ocr_text:
                 full_text += ocr_text + " "
+            image_caption = blip_handler.generate_caption(pil_image)
+            full_text += image_caption
 
             pix = None  # Free up memory
 

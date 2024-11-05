@@ -124,7 +124,7 @@ def suggest_filename(content, used_names, mime_type, additional_info = ""):
         ocr_text = ocr_model.process_image(Image.open(content))
         if ocr_text:
             image_content += ocr_text
-        image_caption = blip_model.generate_caption(content)
+        image_caption = blip_model.generate_caption(Image.open(content))
         image_content += image_caption
         print(image_content)
         json_response = rename_chain.invoke({"file_content": image_content,"used_names": used_names,"mime_type": mime_type,"additional_info": additional_info})
@@ -143,7 +143,7 @@ def suggest_category(content, existing_categories, mime_type, cat_strength, addi
         ocr_text = ocr_model.process_image(Image.open(content))
         if ocr_text:
             image_content += ocr_text
-        image_caption = blip_model.generate_caption(content)
+        image_caption = blip_model.generate_caption(Image.open(content))
         image_content += image_caption
         print(image_content)
 

@@ -46,16 +46,16 @@ class BLIPHandler:
             print(f"✗ Error loading/downloading BLIP model: {e}")
             raise
 
-    def generate_caption(self, image_path):
+    def generate_caption(self, pil_image):
         """
         Generate caption for an image
         Args:
-            image_path: Path to the image file
+            pil_image: PIL image from file path
         Returns:
             str: Generated caption
         """
         try:
-            raw_image = Image.open(image_path).convert('RGB')
+            raw_image = pil_image.convert('RGB')
             inputs = self.processor(raw_image, return_tensors="pt")
             
             self.model.eval()
