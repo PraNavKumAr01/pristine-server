@@ -1,5 +1,5 @@
 from pathlib import Path
-from clip_model import CLIPModelHandler
+from clip_embeddings import ClipModelHandler
 from blip_caption import BLIPHandler
 from text_embedding import SentenceTransformerHandler
 
@@ -15,7 +15,7 @@ def setup_models():
     
     print("\n=== Setting up CLIP model ===")
     clip_dir = base_dir / 'clip-onnx-int8'
-    clip_handler = CLIPModelHandler(model_dir=str(clip_dir))
+    clip_handler = ClipModelHandler(model_dir=str(clip_dir))
     image_model_path, text_model_path = clip_handler.get_model_paths()
     model_paths['clip'] = {
         'dir': str(clip_dir),
