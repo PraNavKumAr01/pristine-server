@@ -8,6 +8,9 @@ from image_ocr import SmartOCR
 from blip_caption import BLIPHandler
 from file_types import image_exts, doc_exts, pdf_exts, excel_exts, csv_exts, get_file_extension
 
+ocr_handler = SmartOCR()
+blip_handler = BLIPHandler()
+
 def extract_image_content(file_path):
     with open(file_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
@@ -19,9 +22,7 @@ def extract_doc_content(file_path):
 def extract_pdf_content(pdf_path):
     doc = fitz.open(pdf_path)
     full_text = ""
-    ocr_handler = SmartOCR()
-    blip_handler = BLIPHandler()
-
+    
     for page_num in range(len(doc)):
         page = doc[page_num]
 
