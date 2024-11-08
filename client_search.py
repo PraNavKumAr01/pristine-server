@@ -39,10 +39,10 @@ def main():
     print(f"Add result: {result}")
 
     get_res = get_db_ids()
-    #print(get_res)
+    print(get_res)
 
     # Test search_files
-    query = "Smart Search Files"
+    query = "Dogs in garden"
     print("\nSearching files...")
     try:
         result = search_files(query)

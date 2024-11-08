@@ -124,14 +124,16 @@ def add_to_collection(paths_model: PathsModel):
                             metadatas=[{'path': file_path}],
                             ids=[file_path]
                         )
-                embedding = clip_model.encode(Image.open(file_path)).tolist()[0]
-                image_store.add_embeddings(
-                    embeddings=[embedding],
-                    metadatas=[{'path': file_path}],
-                    ids=[file_path]
-                )
-                processed_files["image"] += 1
-                file_info_entry["chunks"] = 1
+                    processed_files["image"] += 1
+                else:
+                    embedding = clip_model.encode(Image.open(file_path)).tolist()
+                    image_store.add_embeddings(
+                        embeddings=[embedding],
+                        metadatas=[{'path': file_path}],
+                        ids=[file_path]
+                    )
+                    processed_files["image"] += 1
+                    file_info_entry["chunks"] = 1
             else:
                 content = extract_content(file_path)
                 if len(content) > 1000:
@@ -189,8 +191,7 @@ async def search(query_model: QueryModel):
                     'type': 'text'
                 }
 
-    query_embedding = clip_model.encode(query).tolist()[0]
-    print(query_embedding)
+    query_embedding = clip_model.encode(query).tolist()
     image_results = image_store.similarity_search_with_score(
         query_embeddings=query_embedding,
         k=4
@@ -199,7 +200,7 @@ async def search(query_model: QueryModel):
     for image_res in image_results:
         page, score = image_res
         file_path = page.metadata['path']
-        if score <= 185:
+        if score <= 160:
             if file_path not in file_scores or score < file_scores[file_path]['score']:
                 file_scores[file_path] = {
                     'score': score,
