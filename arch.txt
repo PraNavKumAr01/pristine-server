@@ -1,0 +1,182 @@
+PRISTINE SERVER - SYSTEM DESIGN DOCUMENT
+
+1. HIGH LEVEL ARCHITECTURE
+------------------------
+
+A. System Overview
+-----------------
+Pristine Server is a Python-based system that provides two main functionalities:
+1. Smart File Organization: Automated file categorization and renaming
+2. Semantic Search: Content-based file search using vector embeddings
+
+B. Core Components
+-----------------
+1. File Organization Service
+   - Smart file categorization using LLMs
+   - Automated file renaming
+   - Directory structure preservation
+   - Batch processing capabilities
+
+2. Search Service
+   - Vector-based semantic search
+   - Multi-modal support (text + images)
+   - Dual vector store architecture (text and image embeddings)
+   - Batch processing for indexing
+
+3. AI Services
+   - LLM Integration (Ollama)
+   - Image Processing (BLIP for captions)
+   - OCR Processing (PaddleOCR)
+   - Text Embeddings (SentenceTransformer)
+   - Image Embeddings (CLIP)
+
+C. System Architecture Diagram
+----------------------------
+[Client Layer]
+    │
+    ├── Client Sort Interface
+    └── Client Search Interface
+            │
+            v
+[API Layer]
+    ├── FastAPI Server (8000) - File Organization
+    └── FastAPI Server (8080) - Search Service
+            │
+            v
+[Service Layer]
+    ├── File Organization Service
+    │   ├── Content Extraction
+    │   ├── AI Processing
+    │   └── File System Operations
+    │
+    └── Search Service
+        ├── Vector Storage
+        ├── Embedding Generation
+        └── Query Processing
+            │
+            v
+[Storage Layer]
+    ├── ChromaDB (Text Vectors)
+    ├── ChromaDB (Image Vectors)
+    └── File System
+
+2. LOW LEVEL DESIGN
+------------------
+
+A. File Organization Service
+---------------------------
+1. Main Components:
+   - FileOrganizer Class (smart_sort_server.py)
+   - Content Extractor (content_extractor.py)
+   - AI Operations Handler (ai_ops.py)
+
+2. Key Workflows:
+   a. File Analysis:
+      - Content extraction based on file type
+      - LLM-based name suggestion
+      - Category suggestion
+      - Batch processing for efficiency
+
+   b. File Operations:
+      - Preview generation
+      - Structure preservation
+      - Safe file moves with collision handling
+
+B. Search Service
+----------------
+1. Main Components:
+   - CustomChroma Class (chroma_new.py)
+   - BatchProcessor Class (batch_tasks.py)
+   - Smart Search Server (smart_search_server.py)
+
+2. Key Workflows:
+   a. Indexing:
+      - Content extraction
+      - Embedding generation
+      - Vector storage
+      - Batch processing
+
+   b. Search:
+      - Query embedding
+      - Vector similarity search
+      - Result ranking
+      - Multi-modal fusion
+
+C. AI Service Integration
+------------------------
+1. Model Handlers:
+   - BLIP Handler (blip_caption.py)
+   - CLIP Handler (clip_embeddings.py)
+   - Text Embedding Handler (text_embedding.py)
+   - OCR Handler (image_ocr.py)
+
+2. LLM Integration:
+   - Ollama Server Management (ollama_server.py)
+   - Model Download and Setup (run_setup.py)
+
+D. Data Flow
+-----------
+1. File Organization:
+   Input → Content Extraction → AI Processing → Preview → User Confirmation → File Operations
+
+2. Search:
+   Content → Embedding Generation → Vector Storage → Query → Results
+
+E. Error Handling
+----------------
+1. Graceful degradation for AI services
+2. File operation safety checks
+3. Batch processing error recovery
+4. Model loading fallbacks
+
+F. Performance Considerations
+---------------------------
+1. Batch Processing:
+   - Configurable batch sizes
+   - Concurrent processing
+   - Memory management
+
+2. Vector Storage:
+   - Efficient indexing
+   - Query optimization
+   - Caching strategies
+
+G. Security Considerations
+------------------------
+1. File System:
+   - Safe file operations
+   - Path validation
+   - Access control
+
+2. API:
+   - Input validation
+   - Error handling
+   - Rate limiting (to be implemented)
+
+H. Extensibility
+---------------
+1. Modular Design:
+   - Pluggable AI models
+   - Extensible file type support
+   - Configurable processing pipelines
+
+2. Configuration:
+   - Environment-based settings
+   - Model parameters
+   - Processing options
+
+I. Dependencies
+--------------
+1. Core Libraries:
+   - FastAPI
+   - Langchain
+   - ChromaDB
+   - PyTorch
+   - Transformers
+
+2. AI Models:
+   - BLIP
+   - CLIP
+   - SentenceTransformer
+   - PaddleOCR
+   - Ollama
