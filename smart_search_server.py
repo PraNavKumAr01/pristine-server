@@ -138,6 +138,7 @@ def add_to_collection(paths_model: PathsModel):
                 content = extract_content(file_path)
                 if len(content) > 1000:
                     chunks = text_splitter.split_text(content)
+                    chunks = chunks[:10]
                     for i, chunk in enumerate(chunks):
                         id = f"{file_path}<chunk>{i}"
                         text_store.add_texts(
